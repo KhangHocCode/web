@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Team Assignment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .upload-section, .assignment-section, .search-section, .default-assign-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input[type="number"], input[type="file"], input[type="text"] {
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .team-section {
+            margin-top: 20px;
+        }
+
+        .team-section h3 {
+            text-align: center;
+            color: #333;
+        }
+
+        .team-table {
+            margin-bottom: 30px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Team Assignment</h1>
+
+        <!-- Phần tải tệp TXT -->
+        <div class="upload-section">
+            <h2>Upload Student List (TXT)</h2>
+            <input type="file" id="fileInput" accept=".txt">
+            <button id="uploadButton">Upload</button>
+        </div>
+
+        <!-- Phần gán sinh viên mặc định -->
+        <div class="default-assign-section">
+            <h2>Assign Default Students to Teams</h2>
+            <label for="defaultStudentID">Student ID (MSSV):</label>
+            <input type="text" id="defaultStudentID" placeholder="Enter MSSV to assign">
+            <label for="defaultTeam">Select Team:</label>
+            <input type="number" id="defaultTeam" min="1" placeholder="Enter team number">
+            <button id="assignDefaultButton">Assign Default</button>
+            <button id="clearDefaultButton" style="margin-left: 10px;">Clear Default Assignments</button>
+        </div>
+
+        <!-- Hiển thị danh sách sinh viên theo từng đội -->
+        <div id="teamTablesContainer" class="team-section">
+            <!-- Các bảng đội sẽ được thêm vào đây -->
+        </div>
+
+        <!-- Phần gán đội cho sinh viên -->
+        <div class="assignment-section">
+            <h2>Assign Remaining Students to Teams</h2>
+            <label for="numTeams">Number of Teams:</label>
+            <input type="number" id="numTeams" min="1" required><br>
+            <label for="numMembers">Number of Members per Team:</label>
+            <input type="number" id="numMembers" min="1" required><br>
+
+            <button id="assignTeamsButton">Assign Teams Randomly</button>
+            <button id="randomizeTeamsButton" style="margin-left: 10px;">Randomize Teams Again</button>
+        </div>
+
+        <!-- Tìm kiếm sinh viên -->
+        <div class="search-section">
+            <h2>Search Student by MSSV</h2>
+            <label for="searchID">Student ID (MSSV):</label>
+            <input type="number" id="searchID">
+            <button id="searchButton">Search</button>
+            <p id="searchResult"></p>
+        </div>
+    </div>
+
+    <script>
+        let students = [];
+        let defaultAssignments = {}; // To store manually assigned students
+
+        // Load TXT file and process
+        document.getElementById('uploadButton').addEventListener('click', function () {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please choose a file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                processTXT(content);  // Process the file content
+            };
+            reader.readAsText(file);
+        });
+
+        // Process TXT content
+        function processTXT(content) {
+            const lines = content.split('\n');
+            students = [];
+            defaultAssignments = {}; 
+
+            lines.forEach(line => {
+                const [studentID, ...fullNameParts] = line.trim().split(/\s+/);
+                const studentName = fullNameParts.join(' '); 
+
+                if (studentID && studentName) {
+                    students.push({ id: studentID.trim(), name: studentName.trim(), team: null });
+                }
+            });
+
+            displayTeams();
+        }
+
+        // Display students by team
+        function displayTeams() {
+            const teamTablesContainer = document.getElementById("teamTablesContainer");
+            teamTablesContainer.innerHTML = ''; 
+
+            let teams = {}; 
+
+            // Group students by their teams
+            students.forEach(student => {
+                const teamNum = student.team ? student.team : 'Unassigned';
+                if (!teams[teamNum]) {
+                    teams[teamNum] = [];
+                }
+                teams[teamNum].push(student);
+            });
+
+            // Create table for each team
+            for (const teamNum in teams) {
+                const teamSection = document.createElement('div');
+                teamSection.classList.add('team-table');
+                const teamTitle = document.createElement('h3');
+                teamTitle.textContent = `Team ${teamNum}`;
+                teamSection.appendChild(teamTitle);
+
+                const table = document.createElement('table');
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Student ID (MSSV)</th>
+                            <th>Full Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                `;
+
+                const tbody = table.querySelector('tbody');
+
+                teams[teamNum].forEach(student => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${student.id}</td>
+                        <td>${student.name}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                teamSection.appendChild(table);
+                teamTablesContainer.appendChild(teamSection);
+            }
+        }
+
+        // Shuffle students array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Assign default students to teams
+        document.getElementById('assignDefaultButton').addEventListener('click', function() {
+            const studentID = document.getElementById('defaultStudentID').value.trim();
+            const teamNum = parseInt(document.getElementById('defaultTeam').value);
+
+            if (!studentID || isNaN(teamNum) || teamNum < 1) {
+                alert("Please enter a valid Student ID and Team Number.");
+                return;
+            }
+
+            const student = students.find(s => s.id === studentID);
+            if (student) {
+                student.team = teamNum;  
+                defaultAssignments[studentID] = teamNum;
+                displayTeams();
+                alert(`Assigned ${student.name} to Team ${teamNum}.`);
+            } else {
+                alert("Student not found.");
+            }
+
+            document.getElementById('defaultStudentID').value = '';
+            document.getElementById('defaultTeam').value = '';
+        });
+
+        // Clear team assignment for a specific student
+        document.getElementById('clearDefaultButton').addEventListener('click', function() {
+            const studentID = document.getElementById('defaultStudentID').value.trim();
+            const student = students.find(s => s.id === studentID);
+
+            if (student) {
+                student.team = null;  
+                delete defaultAssignments[studentID]; 
+                displayTeams();  
+                alert(`Cleared assignment for ${student.name}.`);
+            } else {
+                alert("Student not found.");
+            }
+
+            document.getElementById('defaultStudentID').value = '';
+            document.getElementById('defaultTeam').value = '';
+        });
+
+        // Assign random students to teams
+        function assignTeams(numTeams, unassignedStudents) {
+            const shuffledStudents = shuffleArray(unassignedStudents.slice()); 
+
+            const teams = Array.from({ length: numTeams }, () => []);  
+
+            shuffledStudents.forEach((student, index) => {
+                const teamIndex = index % numTeams;  
+                teams[teamIndex].push(student);
+                student.team = teamIndex + 1;  
+            });
+
+            return teams;
+        }
+
+        document.getElementById('assignTeamsButton').addEventListener('click', function () {
+            const numTeams = parseInt(document.getElementById('numTeams').value);
+            const numMembers = parseInt(document.getElementById('numMembers').value);
+
+            if (isNaN(numTeams) || numTeams < 1 || isNaN(numMembers) || numMembers < 1) {
+                alert("Please enter valid numbers for teams and members.");
+                return;
+            }
+
+            const unassignedStudents = students.filter(s => !defaultAssignments[s.id] && !s.team);
+
+            if (unassignedStudents.length === 0) {
+                alert("All students are already assigned to a team.");
+                return;
+            }
+
+            assignTeams(numTeams, unassignedStudents);
+            displayTeams();  
+        });
+
+        // Randomize teams again without affecting manually assigned students
+        document.getElementById('randomizeTeamsButton').addEventListener('click', function () {
+            const numTeams = parseInt(document.getElementById('numTeams').value);
+
+            const unassignedStudents = students.filter(s => !defaultAssignments[s.id]);
+
+            if (unassignedStudents.length === 0) {
+                alert("No unassigned students available for randomization.");
+                return;
+            }
+
+            assignTeams(numTeams, unassignedStudents);
+            displayTeams();  
+        });
+
+        // Search student by ID
+        document.getElementById('searchButton').addEventListener('click', function () {
+            const searchID = document.getElementById('searchID').value.trim();
+
+            const student = students.find(s => s.id === searchID);
+
+            const searchResult = document.getElementById('searchResult');
+
+            if (student) {
+                searchResult.textContent = `Student: ${student.name}, Team: ${student.team ? student.team : 'Unassigned'}`;
+            } else {
+                searchResult.textContent = "Student not found.";
+            }
+        });
+    </script>
+</body>
+</html>
